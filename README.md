@@ -1,2 +1,0 @@
-# jspaint
-Created with CodeSandbox
