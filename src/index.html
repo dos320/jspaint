@@ -146,7 +146,7 @@
       if(pointsQueue){
         pointsQueue = [];
         //pointsQueue.push({x: ev.clientX-rect.left, y: ev.clientY-rect.top});
-        lastPoint = {x: ev.clientX-rect.left+window.pageXOffset, y: ev.clientY-rect.top+window.pageYOffset}
+        lastPoint = {x: ev.clientX-rect.left, y: ev.clientY-rect.top}
         currPoint = null;
       }
       
@@ -155,11 +155,11 @@
         if(pointsQueue.length===2){
           currPoint = pointsQueue[1]; 
           lastPoint = pointsQueue.shift(); 
-          pointsQueue.push({x: e.clientX-rect.left+window.pageXOffset, y: e.clientY-rect.top+window.pageYOffset});
-          socket.emit("send point", {x: e.clientX-rect.left+window.pageXOffset, y: e.clientY-rect.top+window.pageYOffset});
+          pointsQueue.push({x: e.clientX-rect.left, y: e.clientY-rect.top});
+          socket.emit("send point", {x: e.clientX-rect.left, y: e.clientY-rect.top});
         }else{
-          pointsQueue.push({x:e.clientX-rect.left+window.pageXOffset, y:e.clientY-rect.top+window.pageYOffset}); 
-          socket.emit("send point", {x: e.clientX-rect.left+window.pageXOffset, y: e.clientY-rect.top+window.pageYOffset});
+          pointsQueue.push({x:e.clientX-rect.left, y:e.clientY-rect.top}); 
+          socket.emit("send point", {x: e.clientX-rect.left, y: e.clientY-rect.top});
         }
         //console.log(e.clientX+ " " + e.clientY);
         //console.log(pointsQueue);
@@ -180,16 +180,16 @@
       canvas.addEventListener("mouseup", handleMouseUp = (evn)=>{
         //pointsQueue = []; // clears the queue
         // draws a dot if at the same location as mousedown
-        if(lastPoint.x === evn.clientX - rect.left + window.pageXOffset && lastPoint.y === evn.clientY - rect.top + window.pageYOffset){
+        if(lastPoint.x === evn.clientX - rect.left  && lastPoint.y === evn.clientY - rect.top){
           //ctx.beginPath();
           //ctx.moveTo(lastPoint.x, lastPoint.y);
           //ctx.lineTo(ev.clientX - rect.left, ev.clientY - rect.top);
           //ctx.stroke();
           //ctx.fillStyle = "rgb(50,50,50)";
-          ctx.fillRect(evn.clientX-1-rect.left+window.pageXOffset, evn.clientY-1-rect.top+window.pageYOffset, 5, 5); //hardcoded, change later
+          ctx.fillRect(evn.clientX-1-rect.left, evn.clientY-1-rect.top, 5, 5); //hardcoded, change later
         }
         document.onmousemove = null;
-        socket.emit("draw dot", {x: evn.clientX-1-rect.left+window.pageXOffset, y: evn.clientY-1-rect.top+window.pageYOffset, size_x:5, size_y:5})
+        socket.emit("draw dot", {x: evn.clientX-1-rect.left, y: evn.clientY-1-rect.top, size_x:5, size_y:5})
         socket.emit("stop drawing line");
         canvas.removeEventListener("mouseup", handleMouseUp, true);
       }, true);
