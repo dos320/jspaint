@@ -1,5 +1,5 @@
-<script src="canvas.js"></script>
-
+<script src="/socket.io/socket.io.js"></script>
+<script>var socket = io();</script>
 <script>
   function getCursorPosition(canvas, event) {
     /*const rect = canvas.getBoundingClientRect();
@@ -11,8 +11,69 @@
     return {x: event.clientX - rect.left, y: event.clientY - rect.top}
   }
 </script>
-
 <script>
+  // handles receieved socket stuff from server
+  var pointsQueue2=[];
+    var lastPoint;
+    var currPoint;
+  socket.on("colour change", (colour)=>{
+    // major issue: once the colour changes, it changes for everyone who draws on this canvas.
+    // solution: maybe have each person have a randomly selected colour, and not allow colour changes?
+    document.getElementById("drawing-canvas").getContext("2d").fillStyle = colour;
+    document.getElementById("drawing-canvas").getContext("2d").strokeStyle = colour;
+    document.getElementById("color-picker-color").innerHTML = colour;
+  });
+
+  socket.on("draw line", (point)=>{
+    
+    let canvas = document.getElementById("drawing-canvas");
+    let rect = canvas.getBoundingClientRect();
+    let coords;
+    let mousemoveListenerActivated = false;
+    let ctx = canvas.getContext("2d");
+    var drawInterval;
+     //queue of size 2
+    
+
+    //if(pointsQueue2){
+      
+      //pointsQueue2 = [];
+      //lastPoint = point;
+      //currPoint = null;
+    //}
+    console.log(pointsQueue2);
+      if(pointsQueue2.length===2){
+        currPoint = pointsQueue2[1]; 
+        lastPoint = pointsQueue2.shift(); 
+        pointsQueue2.push(point);
+      }else{
+        pointsQueue2.push(point); 
+      }
+      if(pointsQueue2.length === 2){
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        currPoint !== null ? ctx.lineTo(currPoint.x, currPoint.y) : null;
+        ctx.stroke();
+      }
+    /*canvas.addEventListener("mouseup", (evn)=>{
+      // draws a dot if at the same location as mousedown
+      if(lastPoint.x === evn.clientX - rect.left + window.pageXOffset && lastPoint.y === evn.clientY - rect.top + window.pageYOffset){
+        ctx.fillRect(evn.clientX-1-rect.left+window.pageXOffset, evn.clientY-1-rect.top+window.pageYOffset, 5, 5); //hardcoded, change later
+      }
+      document.onmousemove = null;
+    })*/
+  });
+
+  socket.on("stop drawing line", ()=>{
+    if(pointsQueue2){
+      pointsQueue2 = [];
+      lastPoint = point;
+      currPoint = null;
+    }
+  });
+</script>
+<script>
+  
   /*
     TODO:
     - draw something when only clicking and not moving mouse  /// done, although needs more refining
@@ -21,6 +82,24 @@
     - setInterval on the drawing? so networked drawing doesnt totally break
 
   */
+ // functions to run upon loading the page
+  function init(){
+    //
+    draw();
+    eventListenerHandler();
+  }
+  
+  // changes the colour of the brush
+  function eventListenerHandler(){
+    document.getElementById("color-picker").addEventListener("change", (e)=>{
+      //console.log(e.target.value);
+      document.getElementById("drawing-canvas").getContext("2d").fillStyle = e.target.value;
+      document.getElementById("drawing-canvas").getContext("2d").strokeStyle = e.target.value;
+      document.getElementById("color-picker-color").innerHTML = e.target.value;
+      socket.emit("colour change", e.target.value);
+    });
+  }
+
   function draw() {
     let canvas = document.getElementById("drawing-canvas");
     let rect = canvas.getBoundingClientRect();
@@ -68,13 +147,14 @@
           currPoint = pointsQueue[1]; 
           lastPoint = pointsQueue.shift(); 
           pointsQueue.push({x: e.clientX-rect.left+window.pageXOffset, y: e.clientY-rect.top+window.pageYOffset});
-          
+          socket.emit("send point", {x: e.clientX-rect.left+window.pageXOffset, y: e.clientY-rect.top+window.pageYOffset});
         }else{
           pointsQueue.push({x:e.clientX-rect.left+window.pageXOffset, y:e.clientY-rect.top+window.pageYOffset}); 
+          socket.emit("send point", {x: e.clientX-rect.left+window.pageXOffset, y: e.clientY-rect.top+window.pageYOffset});
         }
         //console.log(e.clientX+ " " + e.clientY);
         //console.log(pointsQueue);
-        console.log(pointsQueue.length) // should always be 2
+        //console.log(pointsQueue.length) // should always be 2
         if(pointsQueue.length === 2){
           // debug code
           //ctx.fillStyle = "rgb(50,50,50)";
@@ -95,20 +175,41 @@
           //ctx.moveTo(lastPoint.x, lastPoint.y);
           //ctx.lineTo(ev.clientX - rect.left, ev.clientY - rect.top);
           //ctx.stroke();
-          ctx.fillStyle = "rgb(50,50,50)";
+          //ctx.fillStyle = "rgb(50,50,50)";
           ctx.fillRect(evn.clientX-1-rect.left+window.pageXOffset, evn.clientY-1-rect.top+window.pageYOffset, 5, 5); //hardcoded, change later
         }
         document.onmousemove = null;
-      })
+        socket.emit("stop drawing line");
+      });
     })
   }
-</script>
 
-<body onload="draw()">
+</script>
+<head>
+  <link rel="stylesheet" type="text/css" href="/styles.css">
+</head>
+<body onload="init()">
   <canvas
     id="drawing-canvas"
     height="600"
     width="600"
     style="border: 1px solid black;"
     >test</canvas>
+    
+    <div id="color-picker-div" class="color-picker-div">
+      <input type="color" id="color-picker" class="color-picker" value="#000000">
+      <label>Colour:</label>
+      <label id="color-picker-color"></label>
+    </div>
+    <br>
+    <div id="options-button-group">
+      <button></button><!--
+      --><button></button><!--
+      --><button></button><!--
+      --><button></button><!--
+      --><button></button><!--
+      --><button></button><!--
+      --><button></button><!--
+      -->
+    </div>
 </body>

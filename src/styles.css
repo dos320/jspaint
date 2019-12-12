@@ -1,0 +1,9 @@
+.color-picker-div{
+  float: left;
+}
+
+.options-button-group{
+  padding-right: 0px;
+  padding-left: 0px;
+  border: none;
+}
