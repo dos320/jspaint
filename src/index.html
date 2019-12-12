@@ -14,8 +14,9 @@
 <script>
   // handles receieved socket stuff from server
   var pointsQueue2=[];
-    var lastPoint;
-    var currPoint;
+  var lastPoint;
+  var currPoint;
+  
   socket.on("colour change", (colour)=>{
     // major issue: once the colour changes, it changes for everyone who draws on this canvas.
     // solution: maybe have each person have a randomly selected colour, and not allow colour changes?
@@ -51,7 +52,7 @@
       }
       if(pointsQueue2.length === 2){
         ctx.beginPath();
-        ctx.moveTo(lastPoint.x, lastPoint.y);
+        lastPoint ? ctx.moveTo(lastPoint.x, lastPoint.y) : null;
         currPoint !== null ? ctx.lineTo(currPoint.x, currPoint.y) : null;
         ctx.stroke();
       }
@@ -67,9 +68,15 @@
   socket.on("stop drawing line", ()=>{
     if(pointsQueue2){
       pointsQueue2 = [];
-      lastPoint = point;
+      lastPoint = currPoint;
       currPoint = null;
     }
+  });
+
+  socket.on("draw dot", (dot)=>{
+    let canvas = document.getElementById("drawing-canvas");
+    let ctx = canvas.getContext("2d");
+    ctx.fillRect(dot.x, dot.y, dot.size_x, dot.size_y);
   });
 </script>
 <script>
@@ -100,7 +107,7 @@
     });
   }
 
-  function draw() {
+  var draw = function(){setInterval(function() {
     let canvas = document.getElementById("drawing-canvas");
     let rect = canvas.getBoundingClientRect();
     let coords;
@@ -133,7 +140,9 @@
     })*/
     let lastPoint;
     let currPoint;
-    canvas.addEventListener("mousedown", (ev)=>{
+    let mouseDownHandler;
+    // this funky stuff is done to remove any stray event listeners
+    canvas.addEventListener("mousedown", mouseDownHandler = (ev)=>{
       if(pointsQueue){
         pointsQueue = [];
         //pointsQueue.push({x: ev.clientX-rect.left, y: ev.clientY-rect.top});
@@ -163,11 +172,12 @@
           ctx.beginPath();
           ctx.moveTo(lastPoint.x, lastPoint.y);
           //ctx.lineTo(e.clientX-rect.left, e.clientY-rect.top);
-          currPoint !== null ? ctx.lineTo(currPoint.x, currPoint.y) : null;
+          typeof(currPoint) === "object" ? ctx.lineTo(currPoint.x, currPoint.y) : null;
           ctx.stroke();
         }
       }
-      canvas.addEventListener("mouseup", (evn)=>{
+      let handleMouseUp;
+      canvas.addEventListener("mouseup", handleMouseUp = (evn)=>{
         //pointsQueue = []; // clears the queue
         // draws a dot if at the same location as mousedown
         if(lastPoint.x === evn.clientX - rect.left + window.pageXOffset && lastPoint.y === evn.clientY - rect.top + window.pageYOffset){
@@ -179,10 +189,14 @@
           ctx.fillRect(evn.clientX-1-rect.left+window.pageXOffset, evn.clientY-1-rect.top+window.pageYOffset, 5, 5); //hardcoded, change later
         }
         document.onmousemove = null;
+        socket.emit("draw dot", {x: evn.clientX-1-rect.left+window.pageXOffset, y: evn.clientY-1-rect.top+window.pageYOffset, size_x:5, size_y:5})
         socket.emit("stop drawing line");
-      });
+        canvas.removeEventListener("mouseup", handleMouseUp, true);
+      }, true);
+
+      canvas.removeEventListener("mousedown", mouseDownHandler);
     })
-  }
+  }, 1000)};
 
 </script>
 <head>

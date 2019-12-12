@@ -29,6 +29,10 @@ io.on("connection", (socket)=>{
   socket.on("colour change", (colour)=>{
     socket.broadcast.emit("colour change", colour);
   });
+
+  socket.on("draw dot", (dot)=>{
+    socket.broadcast.emit("draw dot", dot);
+  })
   
 });
 
