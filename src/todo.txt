@@ -1,0 +1,25 @@
+free draw mode:
+- expand canvas to 600x600
+- advanced tools (buttons)
+
+draw and guess mode:
+-change canvas size to 300x300
+- enable word to guess
+- enable timer
+
+stuff to do:
+- change name button
+- random name colours upon socket connection
+- add word to guess and implement logic
+  - server sends signal to each connected client
+    - same signal for all except for the drawer
+    - signal for the drawer enables them to see the word, and enables drawing on the canvas
+    - signal for the others obfuscates the word (shows the length), and disables drawing on the canvas
+- add timer and implement logic
+- start app in default draw and guess mode
+- show current connected users
+- different rooms, eventually move to connecting to rooms using room codes
+- add reconnection stuff (repopulating different elements, etc.)
+- add more QoL stuff
+- add scoring
+- disallow the artist to answer on their turn to draw (loop through currentUsers and check if all people apart from the artist have drawn???)

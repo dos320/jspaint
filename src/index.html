@@ -23,6 +23,7 @@
     document.getElementById("drawing-canvas").getContext("2d").fillStyle = colour;
     document.getElementById("drawing-canvas").getContext("2d").strokeStyle = colour;
     document.getElementById("color-picker-color").innerHTML = colour;
+    document.getElementById("color-picker").setAttribute("value", colour);
   });
 
   socket.on("draw line", (point)=>{
@@ -42,7 +43,7 @@
       //lastPoint = point;
       //currPoint = null;
     //}
-    console.log(pointsQueue2);
+    //console.log(pointsQueue2);
       if(pointsQueue2.length===2){
         currPoint = pointsQueue2[1]; 
         lastPoint = pointsQueue2.shift(); 
@@ -78,6 +79,103 @@
     let ctx = canvas.getContext("2d");
     ctx.fillRect(dot.x, dot.y, dot.size_x, dot.size_y);
   });
+
+  socket.on("clear canvas", ()=>{
+    const context = document.getElementById("drawing-canvas").getContext('2d');
+    context.clearRect(0,0, document.getElementById("drawing-canvas").width, document.getElementById("drawing-canvas").height);
+  });
+
+  socket.on("chat message", (msg, newUser)=>{
+    console.log(msg);
+    let ul = document.getElementById("messages");
+    let li = document.createElement("li");
+    let currentTime = new Date().toLocaleTimeString();
+    //console.log(currentTime);
+    li.innerHTML += "<li><span class=\"msg-username\">" + (newUser.name ? newUser.name : newUser.id) +":</span><span class=\"msg-msg\"> " + msg + "</span></li>"
+    ul.appendChild(li);
+    // scroll to bottom of the element
+    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight - document.getElementById("messages").clientHeight;
+  });
+
+  socket.on("add user to user list", (newUser)=>{
+
+    let ul = document.getElementById("current-users");
+    let li = document.createElement("li");
+    li.innerHTML += "<li><span class=\"msg-username\">" + (newUser.name ? newUser.name : newUser.id) + "</span></li>"
+    ul.appendChild(li);
+  });
+
+  socket.on("handle info message", (msg)=>{
+    alert(msg);
+  });
+
+  socket.on("update users list", (currentUsers)=>{
+    let ul = document.getElementById("current-users");
+    
+    ul.innerHTML = "<span id=\"current-users-onlineusers\" style=\"font-weight: bold\">Online Users</span>";
+    
+    for (user of currentUsers){
+      let li = document.createElement("li");
+      li.innerHTML = "<li><span class=\"msg-username\">" + (user.name ? user.name : user.id) + "</span> Score:" + user.score + "</li>"
+      ul.appendChild(li);
+    }
+  });
+
+  socket.on("announce current artist", (currentArtist)=>{
+    document.getElementById("current-artist").innerHTML = currentArtist.name === "" ? currentArtist.id : currentArtist.name + " is drawing.";
+  })
+
+  socket.on("handle artist status", (isArtist, word)=>{
+    if(isArtist){
+      document.getElementById("word-to-guess").innerHTML = word;
+      document.getElementById("current-artist").innerHTML = "You are drawing.";
+    }else{
+      console.log("here");
+      console.log(convertWordToUnderscores(word));
+      document.getElementById("word-to-guess").innerHTML = convertWordToUnderscores(word);
+      
+    }
+  });
+
+  /*socket.on("start timer", (time)=>{
+    let today = new Date();
+    let finalTime = today.getTime()+time;
+    setInterval(()=>{
+      let today = new Date();
+      let difference = finalTime - today.getTime();
+      console.log(difference);
+      document.getElementById("time-left-to-guess").innerHTML = difference;
+    }, 1000);
+  });*/
+  socket.on("handle timer", (time)=>{
+    time = Math.round(time/1000);
+    document.getElementById("time-left-to-guess").innerHTML = time;
+  });
+
+  socket.on("end round", ()=>{
+    document.getElementById("time-left-to-guess").innerHTML = "Timeout";
+    socket.emit("start game");
+  });
+
+  socket.on("similar match", (msg)=>{
+    let ul = document.getElementById("messages");
+    let li = document.createElement("li");
+    li.innerHTML += "<li>" + msg + " is a close guess!</li>"
+    ul.appendChild(li);
+  });
+
+  socket.on("player guessed correctly", (newUser)=>{
+    let ul = document.getElementById("messages");
+    let li = document.createElement("li");
+    // add scoring
+    li.innerHTML += "<li>" + newUser.name === "" ? newUser.id : newUser.name + " has guessed correctly.</li>"
+    ul.appendChild(li);
+  });
+
+  socket.on("reveal word", (word)=>{
+    document.getElementById("word-to-guess").innerHTML = word;
+  });
+
 </script>
 <script>
   
@@ -97,7 +195,7 @@
   }
   
   // changes the colour of the brush
-  function eventListenerHandler(){
+  let eventListenerHandler = ()=>{
     document.getElementById("color-picker").addEventListener("change", (e)=>{
       //console.log(e.target.value);
       document.getElementById("drawing-canvas").getContext("2d").fillStyle = e.target.value;
@@ -105,6 +203,10 @@
       document.getElementById("color-picker-color").innerHTML = e.target.value;
       socket.emit("colour change", e.target.value);
     });
+  }
+
+  let handleClear = ()=>{
+    socket.emit("clear canvas");
   }
 
   var draw = function(){setInterval(function() {
@@ -186,10 +288,11 @@
           //ctx.lineTo(ev.clientX - rect.left, ev.clientY - rect.top);
           //ctx.stroke();
           //ctx.fillStyle = "rgb(50,50,50)";
-          ctx.fillRect(evn.clientX-1-rect.left, evn.clientY-1-rect.top, 5, 5); //hardcoded, change later
+          ctx.fillRect(evn.clientX-1-rect.left, evn.clientY-1-rect.top, 2, 2); //hardcoded, change later
+          socket.emit("draw dot", {x: evn.clientX-1-rect.left, y: evn.clientY-1-rect.top, size_x:2, size_y:2})
         }
         document.onmousemove = null;
-        socket.emit("draw dot", {x: evn.clientX-1-rect.left, y: evn.clientY-1-rect.top, size_x:5, size_y:5})
+        
         socket.emit("stop drawing line");
         canvas.removeEventListener("mouseup", handleMouseUp, true);
       }, true);
@@ -199,14 +302,107 @@
   }, 1000)};
 
 </script>
+<script>
+  let openNav = ()=>{
+    document.getElementById("myNav").style.width = "50%";
+    for (element of document.getElementsByClassName("overlay-text")){
+      element.style.color = "rgba(255,255,255,0.6)"
+    }
+  }
+
+  let closeNav = ()=>{
+    document.getElementById("myNav").style.width = "0%";
+    //document.getElementsByClassName("overlay-text").style.color="rgba(255,255,255,0.0)";
+    
+    for (element of document.getElementsByClassName("overlay-text")){
+      element.style.color = "rgba(255,255,255,0.0)"
+    }
+  }
+
+  let handleFreeDrawInit = ()=>{
+    console.log("test");
+  }
+
+  let handleDrawAndGuessInit = ()=>{
+    console.log("test");
+  }
+  // also check how close the user's answer is to word to guess
+  let msgSubmit = ()=>{
+    if(document.getElementById("chattextbox").value===""){
+      return;
+    }else if(document.getElementById("chattextbox").value.includes("/")){
+      console.log("command");
+      handleTextboxCommand();
+      return;
+    }
+    
+    if(!socket){
+      let socket = io();
+    }
+      socket.emit("chat message", document.getElementById("chattextbox").value);
+      //socket.emit("not typing");
+      console.log(document.getElementById("chattextbox").value);
+      document.getElementById("chattextbox").value = "";
+  }
+
+  let enterSubmit = (event)=>{
+    if(event.key === "Enter"){
+      msgSubmit();
+      return;
+    }
+  }
+
+  let handleTextboxCommand = ()=>{
+    console.log("handletextboxcommand triggered");
+  }
+
+  let handleStartGame = ()=>{
+    socket.emit("start game");
+  }
+
+  
+  let convertWordToUnderscores = (word)=>{
+    let strUnderscores = "";
+    i = word.length;
+    while(i--){
+      if(word.charAt(i) === " "){
+        strUnderscores = strUnderscores + " ";
+      }else{
+        strUnderscores = strUnderscores + "_ ";
+      }
+    }
+    console.log("strUnderscores: " + strUnderscores); 
+    return strUnderscores;
+  }
+</script>
+
 <head>
   <link rel="stylesheet" type="text/css" href="/styles.css">
 </head>
 <body onload="init()">
-  <canvas
+  
+  <div id="myNav" class="overlay">
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+    <div class="overlay-content">
+      <div id="overlay-content-text" class="overlay-content-text">
+        <h1 style="color: white" id="overlay-text" class="overlay-text">Change Mode</h1>
+        <a href="#" id="overlay-href1" class="overlay-text" onclick="handleFreeDrawInit()">Multiplayer Free Draw</a>
+        <a href="#" id="overlay-href2" class="overlay-text" onclick="handleDrawAndGuessInit()">Draw & Guess</a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="canvas-button-div">
+    <!--
+      free draw mode : 600x600
+      draw and guess mode: 450x450
+    -->
+    <h2>Word to guess: <span id="word-to-guess">test</span></h2> <p>Time left: <span id="time-left-to-guess">test</span></p>
+    <h3><span id="current-artist"></span></h3>
+    <canvas
     id="drawing-canvas"
-    height="600"
-    width="600"
+    height="450"
+    width="450"
     style="border: 1px solid black;"
     >test</canvas>
     
@@ -217,13 +413,32 @@
     </div>
     <br>
     <div id="options-button-group">
-      <button></button><!--
+      <button id="clear" onclick="handleClear()">Clear</button><!--
+      --><button onclick="handleStartGame()">Start Game</button><!--
       --><button></button><!--
       --><button></button><!--
       --><button></button><!--
       --><button></button><!--
       --><button></button><!--
-      --><button></button><!--
-      -->
+      --><button onclick="openNav()">Switch Mode</span>
     </div>
+  </div>
+
+    <div id="message-div" class="message-div">
+      <h3 id="channel-name-header" class="channel-name-header">Chat</h1>
+      <ul id="messages" class="messages"></ul>
+      
+      <form id="chat-form" action="" onkeypress="return enterSubmit(event)" onsubmit="return false;">
+        <input class="chat-form-textbox" id="chattextbox" oninput="" autocomplete="off" />
+        <button class="chat-form-button" type="button" onclick="msgSubmit()">Send</button> 
+        <!--<button type="submit" onclick="test()">Send</button>-->
+      </form>
+      <div id="typing-div"></br></div>
+    </div>
+
+    <div class="info-div">
+      <div class="current-users">
+        <ul class="current-users-ul" id="current-users"><span id="current-users-onlineusers" style="font-weight: bold">Online Users</span></ul>
+      </div>
+   </div>
 </body>
