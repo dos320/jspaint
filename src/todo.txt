@@ -23,3 +23,7 @@ stuff to do:
 - add more QoL stuff
 - add scoring
 - disallow the artist to answer on their turn to draw (loop through currentUsers and check if all people apart from the artist have drawn???)
+
+- game over screen
+- break in between words
+- disallow people other than the artist to draw when it's not their turn

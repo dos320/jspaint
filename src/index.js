@@ -85,6 +85,9 @@ let checkIfAllGuessedCorrectly = ()=>{
     }
   }
   if(numGuessedCorrectly === currentUsers.length-1){
+    for(let user of currentUsers){
+      user.guessedCorrectly = false;
+    }
     return true;
   }
   return false;
@@ -191,20 +194,20 @@ io.on("connection", socket => {
   // this is going to be treated as the main game loop
   socket.on("start game", () => {
     //console.log(currentUsers);
-    if (gameState !== 1) {
-      if (currentUsers.length >= 2 && !newRoundStarted) {
+    if (gameState <= 1) {
+      if (currentUsers.length >= 2 && !newRoundStarted && currentRoundNumber<=maxRounds) {
         newRoundStarted = true;
-        gameState = gameState + 1;
+        gameState = 1;
         // notify client that game has started
         //io.to(`${socket.id}`).emit("handle info message", "Game has been started.");
         // need to add a randomizer here to find someone who hasnt went yet
         // currentArtist = currentUsers[Math.floor(Math.random()*currentUsers.length)];
         currentArtist = currentUsers.find(user => !user.hasCompletedTurn);
+        io.emit("update round numbers", maxRounds, currentRoundNumber);
         if (currentArtist !== undefined) {
           currentUsers.find(user=>!user.hasCompletedTurn).isArtist = true;
           currentArtist.hasCompletedTurn = true;
-        }
-        if (currentArtist === undefined) {
+        }else if (currentArtist === undefined) {
           // this means that all people have went
           /*
             reset all hasCompletedTurn
@@ -216,7 +219,11 @@ io.on("connection", socket => {
             user.hasCompletedTurn = false;
           }
           currentRoundNumber++;
-          io.emit("begin next round", currentRoundNumber);
+          io.emit("update round numbers", maxRounds, currentRoundNumber);
+          
+          currentArtist = currentUsers.find(user => !user.hasCompletedTurn);
+          currentUsers.find(user=>!user.hasCompletedTurn).isArtist = true;
+          currentArtist.hasCompletedTurn = true;
         }
         wordToGuess = wordBank[Math.floor(Math.random() * wordBank.length)];
         console.log(currentArtist);
@@ -259,19 +266,22 @@ io.on("connection", socket => {
           "Error: Game cannot be started with less than 2 people."
         );
       }
-    } else if (gameState === 2) {
+    } else if (gameState === 2 && !newRoundStarted) {
       // display the word for a few seconds
       let intervals = 0;
+      newRoundStarted = true;
       io.emit("reveal word", wordToGuess);
 
       let itvl = setInterval(() => {
         if (intervals >= 5) {
-          clearInterval(itvl);
+          
           // either go back to guessing stage or game over screen if round number is met
           gameState = 0; // defaults to starting another round.
-          currentRoundNumber++; // do a check with this / maxRounds
+          //currentRoundNumber++; // do a check with this / maxRounds
           // reset variables????
           io.emit("end round");
+          clearInterval(itvl);
+          newRoundStarted = false;
         }
         intervals++;
         console.log(intervals);

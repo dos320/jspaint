@@ -176,6 +176,10 @@
     document.getElementById("word-to-guess").innerHTML = word;
   });
 
+  socket.on("update round numbers", (maxRounds, currentRoundNumber)=>{
+    document.getElementById("round-number").innerHTML = "Round " + currentRoundNumber + "/" + maxRounds;
+  });
+
 </script>
 <script>
   
@@ -398,6 +402,7 @@
       draw and guess mode: 450x450
     -->
     <h2>Word to guess: <span id="word-to-guess">test</span></h2> <p>Time left: <span id="time-left-to-guess">test</span></p>
+    <p><span id="round-number"></span></p>
     <h3><span id="current-artist"></span></h3>
     <canvas
     id="drawing-canvas"
