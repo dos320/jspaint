@@ -10,14 +10,19 @@ let currentUsers = [];
 let currentArtist;
 let wordToGuess = "";
 let difference;
-// 0-3
+// gameState: 0-3
 // 0 - waiting for players - can only start with two people
 // 1 - guessing stage
 // 2 - everyone guesses right / time runs out - display the word
 // 3 - game over
 let gameState = 0;
+
+// gameMode: 0-1
+// 0 - guess and draw
+// 1 - free draw
+let gameMode = 0;
 let currentRoundNumber = 1;
-let maxRounds = 5;
+let maxRounds = 1;
 let newRoundStarted = false;
 let timerItvl;
 
@@ -136,11 +141,27 @@ io.on("connection", socket => {
 
   socket.on("send point", point => {
     // emits the point for all clients except the sender to render, client-side
-    socket.broadcast.emit("draw line", point);
+    if(gameMode === 0){
+      if(newUser.isArtist){
+        socket.broadcast.emit("draw line", point);
+      }
+    }else{
+      socket.broadcast.emit("draw line", point);
+    }
+    
+    
   });
 
   socket.on("stop drawing line", () => {
-    socket.broadcast.emit("stop drawing line");
+    if(gameMode === 0){
+      if(newUser.isArtist){
+        socket.broadcast.emit("stop drawing line");
+      }
+    }else{
+      socket.broadcast.emit("stop drawing line");
+    }
+    
+    
   });
 
   socket.on("colour change", colour => {
@@ -194,6 +215,7 @@ io.on("connection", socket => {
   // this is going to be treated as the main game loop
   socket.on("start game", () => {
     //console.log(currentUsers);
+    io.emit("reset all elements");
     if(!newRoundStarted){
       if (gameState <= 1) {
         if (currentUsers.length >= 2 && currentRoundNumber<=maxRounds) {
@@ -259,13 +281,16 @@ io.on("connection", socket => {
             //clearInterval(itvl);
             //document.getElementById("time-left-to-guess").innerHTML = difference;
           }, 1000);
-        } else if(currentUsers.length <2){
+        } else if(currentUsers.length <2 && currentRoundNumber<=maxRounds){
           // notify client that game cannot start
           console.log("test");
           io.to(`${socket.id}`).emit(
             "handle info message",
             "Error: Game cannot be started with less than 2 people."
           );
+        } else {
+          // currentRoundNumber exceeds max rounds
+          gameState = 3;
         }
       } else if (gameState === 2) {
         // display the word for a few seconds
@@ -293,7 +318,27 @@ io.on("connection", socket => {
           "Error: Game has already started."
         );
       }
+      if(gameState === 3){
+        // game over
+        // check all users, find person with most score and display as the winner.
+        // reset all variables.
+        let winner;
+        let bestScore = 0;
+        for(let user of currentUsers){
+          if(user.score > bestScore){
+            bestScore = user.score;
+            winner = user;
+          }
+        }
+        io.emit("display winner", winner);
+        return;
+      }
     }
+  });
+
+  socket.on("change gamemode", (gameModeNum)=>{
+    console.log("changed gamemode");
+    gameMode = gameModeNum;
   });
 });
 

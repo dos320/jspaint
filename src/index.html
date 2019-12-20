@@ -26,6 +26,7 @@
     document.getElementById("color-picker").setAttribute("value", colour);
   });
 
+  // receiving others drawing data
   socket.on("draw line", (point)=>{
     
     let canvas = document.getElementById("drawing-canvas");
@@ -116,7 +117,7 @@
     
     for (user of currentUsers){
       let li = document.createElement("li");
-      li.innerHTML = "<li><span class=\"msg-username\">" + (user.name ? user.name : user.id) + "</span> Score:" + user.score + "</li>"
+      li.innerHTML = "<li><span class=\"msg-username\">" + (user.name ? user.name : user.id) + "</span> Score: " + user.score + "</li>"
       ul.appendChild(li);
     }
   });
@@ -180,6 +181,11 @@
     document.getElementById("round-number").innerHTML = "Round " + currentRoundNumber + "/" + maxRounds;
   });
 
+  socket.on("display winner", (winner)=>{
+    document.getElementById("word-to-guess").innerHTML = winner.name + " wins! (Final score: " + winner.score;
+  });
+
+
 </script>
 <script>
   
@@ -213,6 +219,7 @@
     socket.emit("clear canvas");
   }
 
+  // local drawing logic
   var draw = function(){setInterval(function() {
     let canvas = document.getElementById("drawing-canvas");
     let rect = canvas.getBoundingClientRect();
@@ -325,10 +332,16 @@
 
   let handleFreeDrawInit = ()=>{
     console.log("test");
+    document.getElementById("start-game-button").disabled = true;
+    document.getElementById("start-game-button").setAttribute("style", "background-color: grey");
+    socket.emit("change gamemode", 1)
   }
 
   let handleDrawAndGuessInit = ()=>{
     console.log("test");
+    document.getElementById("start-game-button").disabled = false;
+    document.getElementById("start-game-button").setAttribute("style", "background-color: white"); // change this colour according to the overall style
+    socket.emit("change gamemode", 0)
   }
   // also check how close the user's answer is to word to guess
   let msgSubmit = ()=>{
@@ -419,7 +432,7 @@
     <br>
     <div id="options-button-group">
       <button id="clear" onclick="handleClear()">Clear</button><!--
-      --><button onclick="handleStartGame()">Start Game</button><!--
+      --><button onclick="handleStartGame()" id="start-game-button">Start Game</button><!--
       --><button></button><!--
       --><button></button><!--
       --><button></button><!--

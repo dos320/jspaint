@@ -15,15 +15,19 @@ stuff to do:
     - same signal for all except for the drawer
     - signal for the drawer enables them to see the word, and enables drawing on the canvas
     - signal for the others obfuscates the word (shows the length), and disables drawing on the canvas
-- add timer and implement logic
-- start app in default draw and guess mode
-- show current connected users
 - different rooms, eventually move to connecting to rooms using room codes
 - add reconnection stuff (repopulating different elements, etc.)
 - add more QoL stuff
-- add scoring
-- disallow the artist to answer on their turn to draw (loop through currentUsers and check if all people apart from the artist have drawn???)
+
 
 - game over screen
-- break in between words
+
 - disallow people other than the artist to draw when it's not their turn
+
+completed updates:
+- break in between words... done
+- add scoring
+- disallow the artist to answer on their turn to draw (loop through currentUsers and check if all people apart from the artist have drawn???)
+- show current connected users
+- start app in default draw and guess mode
+- add timer and implement logic
