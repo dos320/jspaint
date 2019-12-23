@@ -20,9 +20,10 @@ stuff to do:
 - add more QoL stuff
 
 
-- game over screen
+- game over screen -- try and fix this
 
 - disallow people other than the artist to draw when it's not their turn
+- implement room functionality - so far it is only done for the chat
 
 completed updates:
 - break in between words... done

@@ -87,7 +87,7 @@
   });
 
   socket.on("chat message", (msg, newUser)=>{
-    console.log(msg);
+    //console.log(newUser.name +" " + msg);
     let ul = document.getElementById("messages");
     let li = document.createElement("li");
     let currentTime = new Date().toLocaleTimeString();
@@ -106,8 +106,19 @@
     ul.appendChild(li);
   });
 
-  socket.on("handle info message", (msg)=>{
+  socket.on("handle alert message", (msg)=>{
     alert(msg);
+  });
+
+  socket.on("handle info message", (msg)=>{
+    let ul = document.getElementById("messages");
+    let li = document.createElement("li");
+    //let currentTime = new Date().toLocaleTimeString();
+    //console.log(currentTime);
+    li.innerHTML += "<li><span class=\"info-msg\"> INFO: " + msg + "</span></li>"
+    ul.appendChild(li);
+    // scroll to bottom of the element
+    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight - document.getElementById("messages").clientHeight;
   });
 
   socket.on("update users list", (currentUsers)=>{
@@ -330,6 +341,14 @@
     }
   }
 
+  let closeRoomForm = ()=>{
+    document.getElementById("room-form-popup").style.display = "none";
+  }
+
+  let openRoomForm = ()=>{
+    document.getElementById("room-form-popup").style.display = "block";
+  }
+
   let handleFreeDrawInit = ()=>{
     console.log("test");
     document.getElementById("start-game-button").disabled = true;
@@ -352,7 +371,6 @@
       handleTextboxCommand();
       return;
     }
-    
     if(!socket){
       let socket = io();
     }
@@ -377,6 +395,22 @@
     socket.emit("start game");
   }
 
+  let handleJoinRoom = ()=>{
+    console.log("handleJoinRoom() triggered")
+    let roomCode = document.getElementById("room-code-input");
+    socket.emit("join new room", roomCode.value);
+    roomCode.value = "";
+  }
+
+  let handleCreateRoom = ()=>{
+    console.log("handleCreateRoom() triggered");
+    socket.emit("create new room"); // generate room code on serverside
+  }
+
+  let handleLeaveRoom = ()=>{
+    console.log("handleLeaveRoom() triggered");
+    socket.emit("leave room");
+  }
   
   let convertWordToUnderscores = (word)=>{
     let strUnderscores = "";
@@ -397,14 +431,24 @@
   <link rel="stylesheet" type="text/css" href="/styles.css">
 </head>
 <body onload="init()">
-  
+  <div class="room-form-popup" id="room-form-popup">
+    <label for="room-code-input"><b>Room code:</b></label>
+    <input type="text" placeholder="Enter room code to join" name="room-code-input" id="room-code-input">
+    
+    <div class="room-form-popup-buttons">
+      <button onclick="handleJoinRoom()">Join Room</button><!--  
+      --><button onclick="handleCreateRoom()">Create Room</button><!--  
+      --><button onclick="closeRoomForm()">Cancel</button>
+    </div>
+   </div>
+
   <div id="myNav" class="overlay">
     <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
     <div class="overlay-content">
       <div id="overlay-content-text" class="overlay-content-text">
         <h1 style="color: white" id="overlay-text" class="overlay-text">Change Mode</h1>
-        <a href="#" id="overlay-href1" class="overlay-text" onclick="handleFreeDrawInit()">Multiplayer Free Draw</a>
-        <a href="#" id="overlay-href2" class="overlay-text" onclick="handleDrawAndGuessInit()">Draw & Guess</a>
+        <a href="javascript:void(0)" id="overlay-href1" class="overlay-text" onclick="handleFreeDrawInit()">Multiplayer Free Draw</a>
+        <a href="javascript:void(0)" id="overlay-href2" class="overlay-text" onclick="handleDrawAndGuessInit()">Draw & Guess</a>
       </div>
     </div>
   </div>
@@ -425,20 +469,22 @@
     >test</canvas>
     
     <div id="color-picker-div" class="color-picker-div">
-      <input type="color" id="color-picker" class="color-picker" value="#000000">
-      <label>Colour:</label>
+      <label for="color-picker">Change colour:</label>
+      <input type="color" id="color-picker" class="color-picker" name= "color-picker" value="#000000">
       <label id="color-picker-color"></label>
     </div>
     <br>
     <div id="options-button-group">
-      <button id="clear" onclick="handleClear()">Clear</button><!--
-      --><button onclick="handleStartGame()" id="start-game-button">Start Game</button><!--
-      --><button></button><!--
-      --><button></button><!--
-      --><button></button><!--
-      --><button></button><!--
-      --><button></button><!--
-      --><button onclick="openNav()">Switch Mode</span>
+      <button class="options-button" id="clear" onclick="handleClear()">Clear</button><!--
+      -->
+      </br></br>
+      <button class="options-button" onclick="handleStartGame()" id="start-game-button">Start Game</button><!--
+      --><button class="options-button" onclick="openRoomForm()">Create/Join Room</button><!--
+      --><button class="options-button" onclick="handleLeaveRoom()">Leave Room</button><!--
+      --><button class="options-button" ></button><!--
+      --><button class="options-button" ></button><!--
+      --><button class="options-button" ></button><!--
+      --><button class="options-button" onclick="openNav()">Switch Mode</span>
     </div>
   </div>
 
@@ -459,4 +505,6 @@
         <ul class="current-users-ul" id="current-users"><span id="current-users-onlineusers" style="font-weight: bold">Online Users</span></ul>
       </div>
    </div>
+
+   
 </body>

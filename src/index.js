@@ -3,10 +3,24 @@ const app = require("express")();
 var http = require("http").createServer(app);
 const io = require("socket.io")(http);
 const stringSimilarity = require("string-similarity");
+const fs = require('fs');
 
-let wordBank = ["APPLE", "VEHICLE", "SCISSORS"]; // may use an external file later
+//let textByLine=[];
+/*fs.readFile(__dirname + '/words.txt', (text)=>{
+  text = text + "";
+  console.log(text);
+  textByLine = text.split('\n');
+});*/
+
+let text = fs.readFileSync(__dirname + "/words.txt");
+text = text+"";
+let textByLine = text.split("\r\n");
+
+let wordBank = textByLine; // may use an external file later
+console.log(wordBank);
 
 let currentUsers = [];
+let currentRooms = [];
 let currentArtist;
 let wordToGuess = "";
 let difference;
@@ -28,65 +42,16 @@ let timerItvl;
 
 let nameGenerator = () => {
   let adj = [
-    "Acceptable",
-    "Believable",
-    "Chosen",
-    "Deaf",
-    "Edgy",
-    "Flying",
-    "Hopeful",
-    "Intentional",
-    "Lost",
-    "Modern",
-    "Narrow",
-    "Owned",
-    "Performing",
-    "Quick",
-    "Red",
-    "Speedy",
-    "White",
-    "Yellow",
-    "Zealous"
-  ];
-  let noun = [
-    "Animal",
-    "Buffoon",
-    "Candle",
-    "Dream",
-    "Eggplant",
-    "Fish",
-    "Greece",
-    "Helmet",
-    "Insect",
-    "Juice",
-    "Kitchen",
-    "Lighter",
-    "Lunch",
-    "Machine",
-    "Parrot",
-    "Quill",
-    "Rainbow",
-    "Sandwich",
-    "Telephone",
-    "Uganda",
-    "Vase",
-    "Wall",
-    "Yacht",
-    "Zoo"
-  ];
-  return (
-    adj[Math.floor(Math.random() * adj.length)] +
-    noun[Math.floor(Math.random() * noun.length)] +
-    "" +
-    Math.floor(Math.random() * 98)
-  );
+    "Acceptable","Believable","Chosen","Deaf","Edgy","Flying","Hopeful","Intentional","Lost","Modern","Narrow","Owned","Performing","Quick","Red","Speedy","White","Yellow","Zealous"];
+  let noun = ["Animal","Buffoon","Candle","Dream","Eggplant","Fish","Greece","Helmet","Insect","Juice","Kitchen","Lighter","Lunch","Machine","Parrot","Quill","Rainbow","Sandwich","Telephone","Uganda","Vase","Wall","Yacht","Zoo"];
+  return (adj[Math.floor(Math.random() * adj.length)] + noun[Math.floor(Math.random() * noun.length)] + "" + Math.floor(Math.random() * 98));
 };
 
 let checkIfAllGuessedCorrectly = ()=>{
   let numGuessedCorrectly = 0;
   for(let user of currentUsers){
     if(user.guessedCorrectly && currentArtist.id !== user.id){
-      numGuessedCorrectly++   
+      numGuessedCorrectly++;   
     }
   }
   if(numGuessedCorrectly === currentUsers.length-1){
@@ -96,6 +61,17 @@ let checkIfAllGuessedCorrectly = ()=>{
     return true;
   }
   return false;
+}
+
+let generateRoomCode = ()=>{
+  let charBank = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z",0,1,2,3,4,5,6,7,8,9];
+  let str = "";
+  for(let i = 0; i<4; i++){
+    let rand = charBank[Math.floor(Math.random()*charBank.length)];
+    str = str+rand;
+  }
+  console.log(str);
+  return str;
 }
 
 app.use(express.static(__dirname));
@@ -117,9 +93,24 @@ io.on("connection", socket => {
     hasCompletedTurn: false,
     score: 0,
     guessedCorrectly: false,
-    isArtist: false
+    isArtist: false,
+    currentRoom: ""
   };
   currentUsers.push(newUser);
+  let newRoom = {
+    roomCode: "default lobby", 
+    currentUsers: [newUser],
+    currentArtist: null,
+    wordToGuess: "", 
+    difference: 0, 
+    gameState: 0, 
+    currentRoundNumber: 0, 
+    maxRounds: 1, 
+    newRoundStarted: false
+  }
+  currentRooms.push(newRoom);
+  newUser.currentRoom = "default lobby";
+  socket.join("default lobby");
   console.log("user connected");
 
   //socket.emit("add user to user list", newUser);
@@ -139,11 +130,43 @@ io.on("connection", socket => {
     io.emit("update users list", currentUsers);
   });
 
+  socket.on("join new room", (roomCode)=>{
+    socket.join(roomCode);
+    newUser.currentRoom = roomCode;
+    io.to(newUser.currentRoom).emit("handle info message", "Joined room " + roomCode + ".");
+  });
+
+  socket.on("create new room", ()=>{
+    let roomCode = generateRoomCode();
+    let newRoom = {
+      roomCode: roomCode, 
+      currentUsers: [newUser], 
+      currentArtist: null, 
+      wordToGuess: "", 
+      difference: 0, 
+      gameState: 0, 
+      currentRoundNumber: 0, 
+      maxRounds: 1, 
+      newRoundStarted: false
+    }
+    socket.join(roomCode);
+    newUser.currentRoom = roomCode;
+    currentRooms.push(newRoom);
+    io.to(newUser.currentRoom).emit("handle info message", "Created and joined room " + roomCode + ".");
+  });
+
+  socket.on("leave room", ()=>{
+    socket.join("default lobby");
+    io.to(newUser.currentRoom).emit("handle info message", "Left room "+ newUser.currentRoom + ".");
+    newUser.currentRoom = "default lobby";    
+  });
+
   socket.on("send point", point => {
     // emits the point for all clients except the sender to render, client-side
     if(gameMode === 0){
       if(newUser.isArtist){
         socket.broadcast.emit("draw line", point);
+        //socket.to()
       }
     }else{
       socket.broadcast.emit("draw line", point);
@@ -197,17 +220,22 @@ io.on("connection", socket => {
         if(checkIfAllGuessedCorrectly()){
           gameState = 2;
           newRoundStarted = false; // stops multiple intervals from being created
-          io.emit("end round");
-          io.emit("clear canvas");
+          //io.emit("end round");
+          //io.emit("clear canvas");
+          io.in(newUser.currentRoom).emit("end round");
+          io.in(newUser.currentRoom).emit("clear canvas");
           clearInterval(timerItvl);
         }
-        io.emit("player guessed correctly", newUser);
-        io.emit("update users list", currentUsers);
+        //io.emit("player guessed correctly", newUser);
+        //io.emit("update users list", currentUsers);
+        io.in(newUser.currentRoom).emit("player guessed correctly", newUser);
+        io.in(newUser.currentRoom).emit("update users list", currentUsers);
       }
     } else if (Math.round(similarity) >= 0.7) {
       io.to(`${socket.id}`).emit("similar match", msg);
     } else {
-      io.emit("chat message", msg, newUser);
+      //io.emit("chat message", msg, newUser);
+      io.in(newUser.currentRoom).emit("chat message", msg, newUser);
     }
     console.log(msg);
   });
@@ -285,10 +313,11 @@ io.on("connection", socket => {
           // notify client that game cannot start
           console.log("test");
           io.to(`${socket.id}`).emit(
-            "handle info message",
+            "handle alert message",
             "Error: Game cannot be started with less than 2 people."
           );
-        } else {
+        } 
+        if(currentRoundNumber>maxRounds) {
           // currentRoundNumber exceeds max rounds
           gameState = 3;
         }
@@ -314,7 +343,7 @@ io.on("connection", socket => {
         }, 1000);
       } else {
         io.to(`${socket.id}`).emit(
-          "handle info message",
+          "handle alert message",
           "Error: Game has already started."
         );
       }
@@ -329,9 +358,15 @@ io.on("connection", socket => {
             bestScore = user.score;
             winner = user;
           }
+          user.score = 0;
         }
+        currentRoundNumber = 1;
+        io.emit("update round numbers", maxRounds, currentRoundNumber);
+        //io.emit("")
         io.emit("display winner", winner);
-        return;
+        io.emit("clear canvas");
+        clearInterval(timerItvl);
+        return 0;
       }
     }
   });
